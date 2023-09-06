@@ -1,0 +1,19 @@
+{
+  "name": "auto-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dadata-suggestions": "^1.1.1",
+    "dotenv": "^16.3.1",
+    "node-fetch": "^2.7.0",
+    "node-telegram-bot-api": "^0.61.0",
+    "uid": "^2.0.2",
+    "ymaps": "^0.2.1"
+  }
+}

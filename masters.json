@@ -1,0 +1,30 @@
+{
+    "masters": [
+        {
+            "phone": "79818560987",
+            "id": "f8874fe074b",
+            "location": [
+                30.309889,
+                59.975344
+            ],
+            "first_name": "Антощенко Данил Дмитриевич",
+            "last_name": "",
+            "telegram_id": 489168663,
+            "chat_id": 489168663,
+            "action": "base",
+            "username": "DanilAnt1",
+            "creatindOrderId": null,
+            "status": "last_name",
+            "is_registered": false,
+            "works_categories": [
+                "electrics",
+                "keys"
+            ],
+            "transport_categories": [
+                "грузовые",
+                "легковые"
+            ],
+            "address": "г Санкт-Петербург, ул Чапыгина, д 8"
+        }
+    ]
+}
