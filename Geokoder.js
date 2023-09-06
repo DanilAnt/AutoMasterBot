@@ -24,7 +24,7 @@ class Geocoder {
 
 
     async getAdressByCoord(coord) {
-console.log(11111);
+
      let   res = false
 
         try {

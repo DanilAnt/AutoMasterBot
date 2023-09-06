@@ -2,7 +2,8 @@ const TelegramBot = require('node-telegram-bot-api');
 const Master = require('./Master');
 const Order = require('./Order');
 const Geocoder = require('./Geokoder')
-var fs = require('fs');
+
+const db = require('./db')
 
 const transport_categories = require('./transport_categories')
 const works_categories = require('./works_categories')
@@ -215,11 +216,11 @@ class Bot {
                 this.actions['base'].select({ master })
             },
 
-            resolve: async ()=>{
+            resolve: async () => {
 
             }
-        }
-        ,
+        },
+
         base: {
             text: "",
             select: async ({ master }) => {
@@ -228,7 +229,7 @@ class Bot {
                         keyboard: [
                             [
                                 {
-                                    text: this.actions.createOrder.text,
+                                    text: this.actions.create_order.text,
                                 },
                                 // {
                                 //     text: this.actions.changeLocation.text,
@@ -260,38 +261,271 @@ class Bot {
         },
 
 
-        createOrder: {
+        create_order: {
             text: 'Создать заявку',
             select: async ({ master }) => {
-                master.setAction('createOrder')
-                await this.sendMessage(master.chat_id, "Опишите задачу");
+                master.setAction('create_order')
+                await this.sendMessage(master.chat_id, 'Укажите телефон клиента в формате +7xxxxxxxxxx, либо отправьте его контакт:')
+                // await this.sendMessage(master.chat_id, "Опишите задачу");
             },
 
             resolve: async ({ msg, master }) => {
-                let order = new Order({ creatorId: master.id, text: msg.text });
-                this.orders.push(order)
-                master.setCreatindOrderId(order.id)
-                this.actions['createOrder_setComission'].select({ msg, master })
+                let phone = msg.text
+                if (phone) {
+                    let order = new Order({ creatorId: master.id, custumer_phone: phone });
+                    master.setCreatindOrderId(order.id)
+                    this.actions['create_order_transport_category'].select({ msg, master })
+                } else {
+                    this.actions['create_order'].select({ master })
+                }
+            }
+        },
+
+        create_order_transport_category: {
+
+            select: async ({ master, hide_message }) => {
+                master.setAction('create_order_transport_category')
+
+                let order = this.getOrder({ id: master.creatindOrderId })
+                if (!order) {
+                    this.showBaseActions({ master })
+                    return
+                }
+
+                const keyboard = {
+                    reply_markup: {
+                        keyboard: [
+                        ],
+                        resize_keyboard: true
+                    },
+                };
+                transport_categories.forEach((i, index) => {
+                    let obj = { text: (order.transport_category === i.key ? '✅' : '') + i.value }
+                    if (index % 2) {
+                        keyboard.reply_markup.keyboard[Math.floor(index / 2)][1] = obj
+                    } else {
+                        keyboard.reply_markup.keyboard.push([obj])
+                    }
+                })
+
+                keyboard.reply_markup.keyboard.push([
+                    this.confirm_button_text
+                ])
+                let res = await this.bot.sendMessage(master.chat_id, hide_message ? 'Подтвердите выбор' : "Выберите категории транспорта, с которыми работаете:", keyboard);
+
+                console.log(res);
+            },
+
+            resolve: async ({ msg, master }) => {
+                let select = msg.text || ''
+
+                if (select === this.confirm_button_text) {
+                    this.actions['create_order_work_category'].select({ master })
+                    return
+                }
+
+                let category =
+                    transport_categories.find(c => select.includes(c.value))
+
+
+                let order = this.getOrder({ id: master.creatindOrderId })
+                if (!order) {
+                    this.showBaseActions({ master })
+                    return
+                }
+
+                console.log({ order });
+
+                if (
+                    category
+                ) {
+
+
+                    if (order.transport_category === category.key) {
+                        order.setTransportCategory('')
+                    } else {
+                        order.setTransportCategory(category.key)
+                    }
+
+                    this.actions['create_order_transport_category'].select({ master, hide_message: true })
+                } else {
+                    this.actions['create_order_transport_category'].select({ master })
+                }
+
+
+            }
+
+
+
+        },
+
+        create_order_work_category: {
+
+            select: async ({ master, hide_message }) => {
+                master.setAction('create_order_work_category')
+
+                let order = this.getOrder({ id: master.creatindOrderId })
+                if (!order) {
+                    this.showBaseActions({ master })
+                    return
+                }
+                const keyboard = {
+                    reply_markup: {
+                        keyboard: [
+                        ],
+                        resize_keyboard: true
+                    },
+                };
+                works_categories.forEach((i, index) => {
+                    let obj = { text: (order.work_category === i.key ? '✅' : '') + i.value }
+                    if (index % 2) {
+                        keyboard.reply_markup.keyboard[Math.floor(index / 2)][1] = obj
+                    } else {
+                        keyboard.reply_markup.keyboard.push([obj])
+                    }
+                })
+
+                keyboard.reply_markup.keyboard.push([
+                    this.confirm_button_text
+                ])
+                let res = await this.bot.sendMessage(master.chat_id, hide_message ? 'Подтвердите выбор' : "Выберите специалзацию:", keyboard);
+
+                console.log(res);
+            },
+
+            resolve: async ({ msg, master }) => {
+                let select = msg.text || ''
+
+                if (select === this.confirm_button_text) {
+                    this.actions['create_order_address'].select({ master })
+                    return
+                }
+
+                let category =
+                    works_categories.find(c => select.includes(c.value))
+
+
+                let order = this.getOrder({ id: master.creatindOrderId })
+                if (!order) {
+                    this.showBaseActions({ master })
+                    return
+                }
+                if (
+                    category
+                ) {
+                    if (order.work_category === category.key) {
+                        order.setWorkCategory('')
+                    } else {
+                        order.setWorkCategory(category.key)
+                    }
+
+                    this.actions['create_order_work_category'].select({ master, hide_message: true })
+                } else {
+                    this.actions['create_order_work_category'].select({ master })
+                }
             }
         },
 
 
-        createOrder_setComission: {
+        create_order_address: {
+
             select: async ({ master }) => {
-                master.setAction('createOrder_setComission')
-                await this.sendMessage(master.chat_id, "Укажите комиссию");
+                master.setAction('create_order_address')
+                this.requestLocation(master.chat_id, "Напишите адрес или пришлите геологацию")
             },
 
             resolve: async ({ msg, master }) => {
 
-                let order = this.orders.find(o => o.id === master.creatindOrderId)
 
-                if (order) {
-                    order.setComission(msg.text)
-                    this.actions['createOrder_setCustumerPhone'].select({ msg, master })
-                } else {
+                let order = this.getOrder({ id: master.creatindOrderId })
+                if (!order) {
                     this.showBaseActions({ master })
+                    return
                 }
+
+                if (msg.location) {
+
+                    let res = await this.geocoder.getAdressByCoord(msg.location)
+                    if (res && res.suggestions && res.suggestions[0]) {
+
+                        let address = res.suggestions[0]
+
+                        console.log({ address });
+                        order.setLocation([+address.data.geo_lon, +address.data.geo_lat], address.value);
+                    }
+
+                } else if (msg.text) {
+
+                    let res = await this.geocoder.getAdress({ query: msg.text })
+
+                    if (res && res.suggestions && res.suggestions[0]) {
+                        let address = res.suggestions[0]
+                        order.setLocation([+address.data.geo_lon, +address.data.geo_lat], address.value);
+                    }
+
+                }
+
+                if (order.checkLocation()) {
+
+                    this.actions['create_order_text'].select({ master })
+                } else {
+                    await this.bot.sendMessage(msg.chat.id, "Адрес не найден, попробуйте отправить геолокацию");
+                }
+
+
+
+
+
+            }
+        },
+
+        create_order_text: {
+            select: async ({ master }) => {
+                master.setAction('create_order_text')
+                await this.sendMessage(master.chat_id, "Кратко опишите, что случилось:");
+            },
+
+            resolve: async ({ msg, master }) => {
+                let order = this.getOrder({ id: master.creatindOrderId })
+                if (!order) {
+                    this.showBaseActions({ master })
+                    return
+                }
+                let text = msg.text
+                if (text) {
+                    order.setText(text)
+                    this.actions['create_order_price'].select({ msg, master })
+                } else {
+                    this.actions['create_order_text'].select({ msg, master })
+                }
+                // await this.bot.sendMessage(msg.chat.id, "Задача создана");
+            }
+        },
+
+
+
+        create_order_price: {
+            select: async ({ master }) => {
+                master.setAction('create_order_price')
+                await this.sendMessage(master.chat_id, "Укажите стоимость:");
+            },
+
+            resolve: async ({ msg, master }) => {
+
+                let order = this.getOrder({ id: master.creatindOrderId })
+
+                if (!order) {
+                    this.showBaseActions({ master })
+                    return
+                }
+                let price = msg.text
+                if (price) {
+                    order.setPrice(price)
+                    this.actions['create_order_comission'].select({ msg, master })
+                } else {
+                    this.actions['create_order_price'].select({ msg, master })
+                }
+
 
                 // await this.bot.sendMessage(msg.chat.id, "Задача создана");
 
@@ -299,100 +533,60 @@ class Bot {
             }
         },
 
-        createOrder_setCustumerPhone: {
+
+        create_order_comission: {
             select: async ({ master }) => {
-                master.setAction('createOrder_setCustumerPhone')
-                await this.sendMessage(master.chat_id, "Пришлите контакт или номер");
+                master.setAction('create_order_comission')
+                await this.sendMessage(master.chat_id, "Укажите комиссию:");
             },
 
             resolve: async ({ msg, master }) => {
 
-                let order = this.orders.find(o => o.id === master.creatindOrderId)
+                let order = this.getOrder({ id: master.creatindOrderId })
 
-                if (order) {
-                    order.setCustumerPhone(msg.text)
-                    this.actions['createOrder_setAddress'].select({ msg, master })
-                } else {
+                if (!order) {
                     this.showBaseActions({ master })
+                    return
+                }
+                let comission = msg.text
+                if (comission) {
+                    order.setComission(comission)
+                    this.actions['create_order_complete'].select({ msg, master })
+                } else {
+                    this.actions['create_order_comission'].select({ msg, master })
                 }
 
 
+                // await this.bot.sendMessage(msg.chat.id, "Задача создана");
 
 
             }
-
-
-
         },
 
-        createOrder_setAddress: {
-
+        create_order_complete: {
             select: async ({ master }) => {
-                master.setAction('createOrder_setAddress')
-                this.requestLocation(master.chat_id, "Напишите адрес или пришлите геологацию")
-            },
+                master.setAction('create_order_complete')
+                let order = this.getOrder({ id: master.creatindOrderId })
 
-            resolve: async ({ msg, master }) => {
-
-
-                let order = this.orders.find(o => o.id === master.creatindOrderId)
-
-                if (order) {
-
-
-
-                    if (msg.location) {
-
-                        let res = await this.geocoder.getAdressByCoord(msg.location)
-                        if (res && res.suggestions && res.suggestions[0]) {
-
-                            let address = res.suggestions[0]
-
-                            console.log({ address });
-                            order.setLocation([+address.data.geo_lon, +address.data.geo_lat], address.value);
-                        }
-
-                    } else if (msg.text) {
-
-                        let res = await this.geocoder.getAdress({ query: msg.text })
-
-                        if (res && res.suggestions && res.suggestions[0]) {
-                            let address = res.suggestions[0]
-                            order.setLocation([+address.data.geo_lon, +address.data.geo_lat], address.value);
-                        }
-
-                    }
-
-                    if (order.checkLocation()) {
-                        console.log({ order });
-                        await this.sendMessage(msg.chat.id, "Задача создана");
-                        await this.sendMessage(msg.chat.id, order.getText());
-                        master.setCreatindOrderId(null);
-                        this.showBaseActions({ master })
-
-                        this.orderCreatedHandler({ order })
-
-                    } else {
-                        await this.bot.sendMessage(msg.chat.id, "Адрес не найден");
-                    }
-
-
-
-
-                } else {
-
+                if (!order) {
                     this.showBaseActions({ master })
+                    return
                 }
+                await this.sendMessage(master.chat_id, "Задача создана");
+                await this.sendMessage(master.chat_id, order.getTextInfo());
+                master.setCreatindOrderId(null);
+                this.showBaseActions({ master })
+                this.orderCreatedHandler({ order })
+            },
+            resolve: async ({ msg, master }) => {
+                this.showBaseActions({ master })
+                return
             }
         },
 
-        createOrder_showAddressesResults: {
+        create_order_showAddressesResults: {
 
         },
-
-
-
-
 
         changeLocation: {
             text: 'Сменить геопозицию'
@@ -437,14 +631,15 @@ class Bot {
 
     async orderCreatedHandler({ order }) {
 
-        let text = order.getText()
+        let text = order.getTextInfo()
 
 
-        this.getMasters().forEach((master) => {
-
+        db.getMasters().forEach((master) => {
+            if (master.id === order.creatorId) {
+                return
+            }
             this.bot.sendMessage(master.chat_id, text, {
                 reply_markup: {
-
                     inline_keyboard: [
                         [{ text: 'Принять', callback_data: 'confirm' }, { text: 'Отклонить', callback_data: 'dicline' }],
                     ]
@@ -622,13 +817,8 @@ class Bot {
         return master
     }
 
-    getMasters() {
-        const json = JSON.parse(fs.readFileSync('./masters.json', 'utf8'));
-        return json.masters || []
-    }
-
     isExists(telegram_id) {
-        let master = this.getMasters().find(m => m.telegram_id === telegram_id) || false
+        let master = db.getMaster({ telegram_id })
         if (master) {
             return new Master({ ...master })
         } else {
@@ -658,6 +848,15 @@ class Bot {
 
     }
 
+    getOrder({ id }) {
+        let order = db.getOrder({ id })
+        if (order) {
+            return new Order(order)
+        } else {
+            return false
+        }
+
+    }
 
     checkCoord(coord) {
         if (!Array.isArray(coord) || !Number.isFinite(coord[0]) || !Number.isFinite(coord[0]) || !coord[0] || !coord[1]) {

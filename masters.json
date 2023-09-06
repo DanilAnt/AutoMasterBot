@@ -2,12 +2,12 @@
     "masters": [
         {
             "phone": "79818560987",
-            "id": "f8874fe074b",
+            "id": "520a68bb68f",
             "location": [
-                30.309889,
-                59.975344
+                30.309959,
+                59.975353
             ],
-            "first_name": "Антощенко Данил Дмитриевич",
+            "first_name": "Данил",
             "last_name": "",
             "telegram_id": 489168663,
             "chat_id": 489168663,
@@ -17,12 +17,13 @@
             "status": "last_name",
             "is_registered": false,
             "works_categories": [
-                "electrics",
-                "keys"
+                "road_help",
+                "tire"
             ],
             "transport_categories": [
-                "грузовые",
-                "легковые"
+                "легковые",
+                "мототранспорт",
+                "грузовые"
             ],
             "address": "г Санкт-Петербург, ул Чапыгина, д 8"
         }

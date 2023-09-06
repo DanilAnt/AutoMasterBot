@@ -239,8 +239,8 @@ class Master {
 
         const json = JSON.parse(fs.readFileSync('./masters.json', 'utf8'));
 
-        json.masters = Array.isArray(obj.masters) ?
-            [...obj.masters.filter(m => m.id !== obj.id), obj] : [obj]
+        json.masters = Array.isArray(json.masters) ?
+            [...json.masters.filter(m => m.id !== obj.id), obj] : [obj]
 
         try {
             // convert JSON object to a string
@@ -255,20 +255,13 @@ class Master {
     }
 
     getTextInfo() {
-
-
-        return `Имя: ${this.first_name}\n
-        Адресс: ${this.address}\n
-        Телефон: ${this.phone}\n
-        Категории транспорта: ${this.transport_categories.map(key => {
+        return `Имя: ${this.first_name}\nАдресс: ${this.address}\nТелефон: ${this.phone}\nКатегории транспорта: ${this.transport_categories.map(key => {
             let cat = transport_categories.find(i => i.key === key)
             return cat ? cat.value : key
-        }).join('; ')}\n
-        Виды работ: ${this.works_categories.map(key => {
+        }).join('; ')}\nВиды работ: ${this.works_categories.map(key => {
             let cat = works_categories.find(i => i.key === key)
             return cat ? cat.value : key
-        }).join('; ')}
-        `
+        }).join('; ')}`
 
     }
 
