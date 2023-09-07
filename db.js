@@ -17,9 +17,33 @@ const db = {
         }
     },
 
-    getOrders() {
+    getOrders({ executorId, transport_categories }) {
         const json = JSON.parse(fs.readFileSync('./orders.json', 'utf8'));
-        return json.orders || []
+
+
+
+        let orders =
+            json.orders || []
+
+
+
+        orders = orders.filter(o => {
+            let res = true
+            if (typeof executorId === 'string') {
+                if (o.executorId !== executorId) {
+                    res = false
+                }
+            }
+            if (Array.isArray(transport_categories)) {
+                if (!transport_categories.includes(o.transport_category)) {
+                    res = false
+                }
+            }
+            return res
+        })
+
+
+        return orders
     },
 
     getOrder({ id }) {
@@ -30,7 +54,37 @@ const db = {
             return false
         }
     }
+    ,
+    addCallback(callback) {
+        if (!callback || !callback.id) return
+        const json = JSON.parse(fs.readFileSync('./callbacks.json', 'utf8'));
 
+        json.callbacks = Array.isArray(json.callbacks) ?
+            [...json.callbacks.filter(c => c.id !== callback.id), callback] : [callback]
+        try {
+            // convert JSON object to a string
+            const data = JSON.stringify(json, null, 4)
+
+            // write file to disk
+            fs.writeFileSync('./callbacks.json', data, 'utf8')
+        } catch (err) {
+            console.log(`Error writing file: ${err}`)
+        }
+
+
+    },
+    getCallbacks() {
+        const json = JSON.parse(fs.readFileSync('./callbacks.json', 'utf8'));
+        return json.callbacks || []
+    },
+    getCallback({ id }) {
+        const callback = this.getCallbacks().find(o => o.id === id)
+        if (callback) {
+            return callback
+        } else {
+            return false
+        }
+    }
 }
 
 module.exports = db

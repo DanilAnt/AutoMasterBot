@@ -2,28 +2,26 @@
     "masters": [
         {
             "phone": "79818560987",
-            "id": "520a68bb68f",
+            "id": "7b18fb8f46f",
             "location": [
-                30.309959,
-                59.975353
+                30.309574,
+                59.975377
             ],
-            "first_name": "Данил",
+            "first_name": "Slfkfj",
             "last_name": "",
             "telegram_id": 489168663,
             "chat_id": 489168663,
             "action": "base",
             "username": "DanilAnt1",
-            "creatindOrderId": null,
             "status": "last_name",
             "is_registered": false,
             "works_categories": [
-                "road_help",
-                "tire"
+                "road_help"
             ],
             "transport_categories": [
-                "легковые",
                 "мототранспорт",
-                "грузовые"
+                "легковые",
+                "спецтехника"
             ],
             "address": "г Санкт-Петербург, ул Чапыгина, д 8"
         }

@@ -1,0 +1,186 @@
+{
+    "callbacks": [
+        {
+            "id": "9c3c9b571ef",
+            "callback": "show_orders",
+            "props": {
+                "executorId": ""
+            }
+        },
+        {
+            "id": "c3c9b571ef5",
+            "callback": "show_orders",
+            "props": {
+                "executorId": "",
+                "transport_categories": [
+                    "мототранспорт",
+                    "легковые",
+                    "спецтехника"
+                ]
+            }
+        },
+        {
+            "id": "3c9b571ef55",
+            "callback": "show_orders",
+            "props": {
+                "executorId": "7b18fb8f46f"
+            }
+        },
+        {
+            "id": "871584fe3a6",
+            "callback": "show_orders",
+            "props": {
+                "executorId": ""
+            }
+        },
+        {
+            "id": "71584fe3a6a",
+            "callback": "show_orders",
+            "props": {
+                "executorId": "",
+                "transport_categories": [
+                    "мототранспорт",
+                    "легковые",
+                    "спецтехника"
+                ]
+            }
+        },
+        {
+            "id": "1584fe3a6ac",
+            "callback": "show_orders",
+            "props": {
+                "executorId": "7b18fb8f46f"
+            }
+        },
+        {
+            "id": "d13f082debd",
+            "callback": "show_orders",
+            "props": {
+                "executorId": ""
+            }
+        },
+        {
+            "id": "13f082debd5",
+            "callback": "show_orders",
+            "props": {
+                "executorId": "",
+                "transport_categories": [
+                    "мототранспорт",
+                    "легковые",
+                    "спецтехника"
+                ]
+            }
+        },
+        {
+            "id": "3f082debd55",
+            "callback": "show_orders",
+            "props": {
+                "executorId": "7b18fb8f46f"
+            }
+        },
+        {
+            "id": "f082debd55b",
+            "callback": "show_orders",
+            "props": {
+                "executorId": ""
+            }
+        },
+        {
+            "id": "082debd55b1",
+            "callback": "show_orders",
+            "props": {
+                "executorId": "",
+                "transport_categories": [
+                    "мототранспорт",
+                    "легковые",
+                    "спецтехника"
+                ]
+            }
+        },
+        {
+            "id": "82debd55b13",
+            "callback": "show_orders",
+            "props": {
+                "executorId": "7b18fb8f46f"
+            }
+        },
+        {
+            "id": "833447ed087",
+            "callback": "show_orders",
+            "props": {
+                "executorId": ""
+            }
+        },
+        {
+            "id": "33447ed087a",
+            "callback": "show_orders",
+            "props": {
+                "executorId": "",
+                "transport_categories": [
+                    "мототранспорт",
+                    "легковые",
+                    "спецтехника"
+                ]
+            }
+        },
+        {
+            "id": "3447ed087a8",
+            "callback": "show_orders",
+            "props": {
+                "executorId": "7b18fb8f46f"
+            }
+        },
+        {
+            "id": "447ed087a86",
+            "callback": "show_orders",
+            "props": {
+                "executorId": ""
+            }
+        },
+        {
+            "id": "47ed087a86e",
+            "callback": "show_orders",
+            "props": {
+                "executorId": "",
+                "transport_categories": [
+                    "мототранспорт",
+                    "легковые",
+                    "спецтехника"
+                ]
+            }
+        },
+        {
+            "id": "7ed087a86eb",
+            "callback": "show_orders",
+            "props": {
+                "executorId": "7b18fb8f46f"
+            }
+        },
+        {
+            "id": "b7d61885764",
+            "callback": "show_orders",
+            "props": {
+                "executorId": ""
+            }
+        },
+        {
+            "id": "7d618857646",
+            "callback": "show_orders",
+            "props": {
+                "executorId": "",
+                "transport_categories": [
+                    "мототранспорт",
+                    "легковые",
+                    "спецтехника"
+                ]
+            }
+        },
+        {
+            "id": "d618857646b",
+            "callback": "show_orders",
+            "props": {
+                "executorId": "7b18fb8f46f"
+            }
+        }
+    ]
+}
