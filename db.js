@@ -17,7 +17,7 @@ const db = {
         }
     },
 
-    getOrders({ executorId, transport_categories }) {
+    getOrders({ executorId, creatorId, transport_categories } = {}) {
         const json = JSON.parse(fs.readFileSync('./orders.json', 'utf8'));
 
 
@@ -29,8 +29,18 @@ const db = {
 
         orders = orders.filter(o => {
             let res = true
-            if (typeof executorId === 'string') {
+
+
+            if (typeof executorId === 'string' && typeof creatorId === 'string') {
+                if (o.executorId !== executorId && creatorId !== o.creatorId) {
+                    res = false
+                }
+            } else if (typeof executorId === 'string') {
                 if (o.executorId !== executorId) {
+                    res = false
+                }
+            } else if (typeof creatorId === 'string') {
+                if (o.creatorId !== creatorId) {
                     res = false
                 }
             }

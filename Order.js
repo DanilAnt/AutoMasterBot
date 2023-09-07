@@ -201,8 +201,9 @@ class Order {
 
     }
 
-    getTextInfo({ custumer_phone } = {}) {
+    getTextInfo({ custumer_phone, full } = {}) {
         const master = db.getMaster({ id: this.creatorId })
+
         let name = master ? master.first_name : ''
         let transport_category = transport_categories.find(i => i.key === this.transport_category)
         let transport_category_value = transport_category ? transport_category.value : this.transport_category
@@ -211,9 +212,20 @@ class Order {
 
         let str = `Заказ от: ${name}\nТранспорт: ${transport_category_value}\nТип работы: ${work_category_value}\nАдрес: ${this.address}\nКомиссия: ${this.comission}\nОписание: ${this.text}\nСтоимость: ${this.price}\n`
 
-        if (custumer_phone) {
+        if (this.executorId && full) {
+
+            const executor = db.getMaster({ id: this.creatorId })
+
+            if (executor) {
+                str = str + `Исполнитель: ${executor.first_name}\n`
+            }
+        }
+        if (custumer_phone || full) {
             str = str + `Номер клиента: ${this.custumer_phone}\n`
         }
+
+
+
         return str
     }
 }

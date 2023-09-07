@@ -17,6 +17,364 @@ class Bot {
 
     orders = []
 
+
+    constructor(token, props = {}) {
+        this.geocoder = new Geocoder()
+        // this.geocoder.getAdress({ query: 'студенческая 3' })
+
+
+        this.bot = new TelegramBot(token, {
+            ...props
+        });
+
+
+        this.errorHandler = this.errorHandler.bind(this)
+        this.bot.on("polling_error", this.errorHandler)
+
+
+        this.messageHandler = this.messageHandler.bind(this)
+        this.bot.on('text', this.messageHandler)
+
+        this.contactHandler = this.contactHandler.bind(this)
+        this.bot.on('contact', this.contactHandler)
+
+        this.locationHandler = this.locationHandler.bind(this)
+        this.bot.on('location', this.locationHandler);
+
+        this.callbackQueryHandler = this.callbackQueryHandler.bind(this)
+        this.bot.on('callback_query', this.callbackQueryHandler)
+
+
+        // let order = this.getOrder({ id: '20a68bb68fa' })
+
+        // setTimeout(() => {
+        //     this.orderCreatedHandler({ order })
+        // }, 1000)
+
+    }
+
+    orderRelesedHandler({ order, previousExecutorId }) {
+        let text = order.getTextInfo()
+
+        text = 'Освободился заказ:\n'
+
+        db.getMasters().forEach(async (master) => {
+
+            if (master.id === order.creatorId || previousExecutorId === master.id) {
+                return
+            }
+
+            await this.bot.sendMessage(master.chat_id, text, {
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: 'Принять', callback_data: this.createCallback('order_confirm', { result: 'confirm', master_id: master.id, order_id: order.id }).id },
+                            {
+                                text: 'Отклонить', callback_data:
+                                    this.createCallback('order_confirm', { result: 'decline', master_id: master.id, order_id: order.id }).id
+                            }
+                        ]
+                    ]
+                }
+            });
+
+
+        })
+    }
+
+    async orderCreatedHandler({ order }) {
+
+        let text = order.getTextInfo()
+
+
+        db.getMasters().forEach(async (master) => {
+
+            if (master.id === order.creatorId) {
+                return
+            }
+
+            await this.bot.sendMessage(master.chat_id, text, {
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: 'Принять', callback_data: this.createCallback('order_confirm', { result: 'confirm', master_id: master.id, order_id: order.id }).id },
+                            {
+                                text: 'Отклонить', callback_data:
+                                    this.createCallback('order_confirm', { result: 'decline', master_id: master.id, order_id: order.id }).id
+                            }
+                        ]
+                    ]
+                }
+            });
+
+
+        })
+    }
+
+    async callbackQueryHandler(msg) {
+        console.log(msg, 'callbackQueryHandler');
+
+        const callback_data = db.getCallback({ id: msg.data })
+        if (!callback_data || !callback_data.props) return
+
+
+
+
+
+        if (typeof this.callbacks[callback_data.callback] === 'function') {
+            this.callbacks[callback_data.callback]({ ...callback_data.props, msg })
+        }
+
+
+    }
+
+    async requestLocation(chatId, message_text) {
+        const keyboard = {
+            reply_markup: {
+                keyboard: [
+                    [
+                        {
+                            text: "Поделиться геолокацией",
+                            request_location: true, // Это позволяет запросить контакт пользователя
+                        },
+                    ],
+                ],
+                resize_keyboard: true
+            },
+        };
+
+        await this.bot.sendMessage(chatId, message_text || "Пожалуйста, отправьте вашу локацию:", keyboard);
+
+    }
+
+    async requestNumber(chatId, text = 'Пожалуйста, отправьте ваш номер телефона:') {
+        const keyboard = {
+            reply_markup: {
+                keyboard: [
+                    [
+                        {
+                            text: "Поделиться номером",
+                            request_contact: true, // Это позволяет запросить контакт пользователя
+                        },
+                    ],
+                ],
+                resize_keyboard: true
+            },
+        };
+
+        await this.bot.sendMessage(chatId, text, keyboard);
+
+    }
+
+    errorHandler(err) {
+        console.log(err);
+    }
+
+
+    async requestSignUpField(master) {
+        if (master.status === 'first_name') {
+            await this.sendMessage(master.chat_id, 'Напишите Ваше имя:')
+        } else if (master.status === 'last_name') {
+            await this.sendMessage(master.chat_id, 'Напишите Вашу фамилию:')
+        } else if (master.status === 'phone') {
+            await this.requestNumber(master.chat_id)
+
+        } else if (master.status === 'location') {
+            await this.requestLocation(master.chat_id)
+
+        } else if (master.status === 'ready') [
+            this.registationFinnisedHandler({ master })
+        ]
+    }
+
+    async registationFinnisedHandler({ master }) {
+        await this.sendMessage(master.chat_id, 'Регистрация завершена!')
+        await this.showBaseActions({ master });
+    }
+
+    contactHandler(msg) {
+
+        msg.text = msg.contact.phone_number
+        this.messageHandler(msg)
+    }
+
+
+    locationHandler(msg) {
+        msg.location = [msg.location.longitude, msg.location.latitude]
+        this.messageHandler(msg)
+    }
+
+    async showBaseActions({ msg, master }) {
+        this.actions['base'].select({ msg, master })
+    }
+
+    async messageHandler(msg) {
+        console.log(msg);
+        try {
+
+            let master = this.isExists(msg.from.id)
+
+
+            if (master) {
+                master.chat_id = msg.chat.id;
+                let actionKey = Object.keys(this.actions).find(key => {
+                    return key === master.action
+                })
+
+                let action = this.actions[actionKey]
+
+
+
+                if (action) {
+                    action.resolve({ master, msg })
+                } else if (master.is_registered) {
+
+
+                    this.showBaseActions({ master, msg })
+                } else {
+                    this.actions['sign_up'].select({ master })
+                }
+            } else {
+                this.newUserHandler({ telegram_id: msg.from.id, username: msg.from.username, chat_id: msg.chat.id })
+            }
+        }
+        catch (error) {
+            console.log(error);
+        }
+    }
+
+    async newUserHandler({ telegram_id, chat_id, username }) {
+        const master = this.createMaster({ telegram_id, chat_id, username })
+        this.actions['sign_up'].select({ master })
+    }
+
+    createMaster({ telegram_id, chat_id, username }) {
+        const master = new Master({ telegram_id, chat_id, username })
+        return master
+    }
+
+    getMaster({ id, telegram_id }) {
+
+        let master = id ? db.getMaster({ id }) : telegram_id ? db.getMaster({ telegram_id }) : false
+        if (master) {
+            return new Master({ ...master })
+        } else {
+            return false
+        }
+    }
+
+    createCallback(callback = '', props = {}) {
+
+        const id = uid()
+        const data = {
+            id,
+            callback,
+            props
+        }
+
+        db.addCallback(data)
+
+
+        return data
+    }
+
+    isExists(telegram_id) {
+        let master = db.getMaster({ telegram_id })
+        if (master) {
+            return new Master({ ...master })
+        } else {
+            return false
+
+        }
+    }
+
+    async sendMessage(chat_id, text) {
+
+        let keyboard = {
+            reply_markup: {
+                remove_keyboard: true,
+                selective: false
+            },
+        };
+
+        await this.bot.sendMessage(chat_id, text,
+            keyboard)
+    }
+
+    async waiting(chat_id, text) {
+        const msgWait = await this.bot.sendMessage(chat_id, `Ожидайте ответа...`);
+        return async () => {
+            await this.bot.deleteMessage(msgWait.chat.id, msgWait.message_id);
+        }
+
+    }
+
+    getOrder({ id }) {
+        let order = db.getOrder({ id })
+        if (order) {
+            return new Order(order)
+        } else {
+            return false
+        }
+
+    }
+
+    getOrders({ executorId,creatorId , transport_categories } = {}) {
+        let orders = db.getOrders({ executorId,creatorId, transport_categories }).map(o => new Order(o))
+
+        return orders
+
+    }
+
+    showOrder({ master, order }) {
+        if (!master) return
+        if (order.creatorId === master.id) {
+
+            if (order.executorId) {
+
+                let executor = this.getMaster(order.executorId)
+                if (executor) {
+                    this.bot.sendMessage(master.chat_id, 'Заказ принят мастером\n' + order.getTextInfo({ full: true }), { reply_markup: { inline_keyboard: [[{ text: 'Чат с исполнителем', url: 'https://t.me/' + executor.username }]] } })
+                }
+            } else {
+                this.bot.sendMessage(master.chat_id, 'Заказ в ожидании мастера\n' + order.getTextInfo({ full: true }), { reply_markup: { inline_keyboard: [] } })
+            }
+
+        } else if (order.executorId === master.id) {
+            let executor = this.getMaster(order.executorId)
+            if (executor) {
+                this.bot.sendMessage(master.chat_id, order.getTextInfo({ full: true }), {
+                    reply_markup: {
+                        inline_keyboard: [[{ text: 'Чат с создателем', url: 'https://t.me/' + master.username },
+                        { text: 'Отказаться от заказа', callback_data: this.createCallback('order_cancel', { order_id: order.id }) }],
+
+
+                        [
+                            { text: 'Завершить заказ', callback_data: this.createCallback('order_resolve', { order_id: order.id }) }]
+                        ]
+                    }
+                })
+            }
+
+        }
+    }
+
+    checkCoord(coord) {
+        if (!Array.isArray(coord) || !Number.isFinite(coord[0]) || !Number.isFinite(coord[0]) || !coord[0] || !coord[1]) {
+            return false
+        }
+        else {
+            return true
+        }
+
+
+    }
+
+
+
+
+
+
     actions = {
         sign_up: {
             select: async ({ master }) => {
@@ -432,7 +790,7 @@ class Bot {
 
             select: async ({ master }) => {
                 master.setAction('create_order_address')
-                this.requestLocation(master.chat_id, "Напишите адрес или пришлите геологацию")
+                this.sendMessage(master.chat_id, "Напишите адрес или пришлите геологацию")
             },
 
             resolve: async ({ msg, master }) => {
@@ -594,7 +952,7 @@ class Bot {
                             [{
                                 text: 'Из моей категории', callback_data: this.createCallback('show_orders', { executorId: '', transport_categories: [...master.transport_categories] }).id
                             }],
-                            [{ text: 'Мои заявки', callback_data: this.createCallback('show_orders', { executorId: master.id }).id }],
+                            [{ text: 'Мои заявки', callback_data: this.createCallback('show_orders', { executorId: master.id , creatorId: master.id}).id }],
                         ]
                     }
                 })
@@ -649,13 +1007,28 @@ class Bot {
                 }
             }
         },
-        show_orders: ({ msg, executorId, transport_categories } = {}) => {
-            let orders = this.getOrders({ executorId, transport_categories })
+        order_cancel: ({ msg, order_id }) => {
+            if (order_id) {
+                let order = this.getOrder({ id: order_id })
+                if (order) {
+                    let previousExecutorId = order.executorId
+                    order.setExecutorId('')
+                    this.orderRelesedHandler({ order, previousExecutorId })
+                }
+            }
+        },
+
+        order_resolve: ({ msg, order_id }) => {
+
+            console.log('заказ завешён ');
+        },
+        show_orders: ({ msg, executorId,creatorId, transport_categories } = {}) => {
+            let orders = this.getOrders({ executorId, creatorId, transport_categories })
 
             orders.forEach(o => {
                 this.bot.sendMessage(msg.message.chat.id, o.getTextInfo())
             })
-            if(!orders.length){
+            if (!orders.length) {
                 this.bot.sendMessage(msg.message.chat.id, 'Заявки не найдены')
             }
 
@@ -663,299 +1036,6 @@ class Bot {
         }
 
     }
-
-    constructor(token, props = {}) {
-        this.geocoder = new Geocoder()
-        // this.geocoder.getAdress({ query: 'студенческая 3' })
-
-
-        this.bot = new TelegramBot(token, {
-            ...props
-        });
-
-
-        this.errorHandler = this.errorHandler.bind(this)
-        this.bot.on("polling_error", this.errorHandler)
-
-
-        this.messageHandler = this.messageHandler.bind(this)
-        this.bot.on('text', this.messageHandler)
-
-        this.contactHandler = this.contactHandler.bind(this)
-        this.bot.on('contact', this.contactHandler)
-
-        this.locationHandler = this.locationHandler.bind(this)
-        this.bot.on('location', this.locationHandler);
-
-        this.callbackQueryHandler = this.callbackQueryHandler.bind(this)
-        this.bot.on('callback_query', this.callbackQueryHandler)
-
-
-        // let order = this.getOrder({ id: '20a68bb68fa' })
-
-        // setTimeout(() => {
-        //     this.orderCreatedHandler({ order })
-        // }, 1000)
-
-    }
-
-
-    async orderCreatedHandler({ order }) {
-
-        let text = order.getTextInfo()
-
-
-        db.getMasters().forEach(async (master) => {
-
-            if (master.id === order.creatorId) {
-                return
-            }
-
-            await this.bot.sendMessage(master.chat_id, text, {
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            { text: 'Принять', callback_data: this.createCallback('order_confirm', { result: 'confirm', master_id: master.id, order_id: order.id }).id },
-                            {
-                                text: 'Отклонить', callback_data:
-                                    this.createCallback('order_confirm', { result: 'decline', master_id: master.id, order_id: order.id }).id
-                            }
-                        ]
-                    ]
-                }
-            });
-
-
-        })
-
-    }
-
-    async callbackQueryHandler(msg) {
-        console.log(msg, 'callbackQueryHandler');
-
-        const callback_data = db.getCallback({ id: msg.data })
-        if (!callback_data || !callback_data.props) return
-
-
-
-
-
-        if (typeof this.callbacks[callback_data.callback] === 'function') {
-            this.callbacks[callback_data.callback]({ ...callback_data.props, msg })
-        }
-
-
-    }
-
-    async requestLocation(chatId, message_text) {
-        const keyboard = {
-            reply_markup: {
-                keyboard: [
-                    [
-                        {
-                            text: "Поделиться геолокацией",
-                            request_location: true, // Это позволяет запросить контакт пользователя
-                        },
-                    ],
-                ],
-                resize_keyboard: true
-            },
-        };
-
-        await this.bot.sendMessage(chatId, message_text || "Пожалуйста, отправьте вашу локацию:", keyboard);
-
-    }
-
-    async requestNumber(chatId, text = 'Пожалуйста, отправьте ваш номер телефона:') {
-        const keyboard = {
-            reply_markup: {
-                keyboard: [
-                    [
-                        {
-                            text: "Поделиться номером",
-                            request_contact: true, // Это позволяет запросить контакт пользователя
-                        },
-                    ],
-                ],
-                resize_keyboard: true
-            },
-        };
-
-        await this.bot.sendMessage(chatId, text, keyboard);
-
-    }
-
-    errorHandler(err) {
-        console.log(err);
-    }
-
-
-    async requestSignUpField(master) {
-        if (master.status === 'first_name') {
-            await this.sendMessage(master.chat_id, 'Напишите Ваше имя:')
-        } else if (master.status === 'last_name') {
-            await this.sendMessage(master.chat_id, 'Напишите Вашу фамилию:')
-        } else if (master.status === 'phone') {
-            await this.requestNumber(master.chat_id)
-
-        } else if (master.status === 'location') {
-            await this.requestLocation(master.chat_id)
-
-        } else if (master.status === 'ready') [
-            this.registationFinnisedHandler({ master })
-        ]
-    }
-
-    async registationFinnisedHandler({ master }) {
-        await this.sendMessage(master.chat_id, 'Регистрация завершена!')
-        await this.showBaseActions({ master });
-    }
-
-    contactHandler(msg) {
-
-        msg.text = msg.contact.phone_number
-        this.messageHandler(msg)
-    }
-
-
-    locationHandler(msg) {
-        msg.location = [msg.location.longitude, msg.location.latitude]
-        this.messageHandler(msg)
-    }
-
-    async showBaseActions({ msg, master }) {
-        this.actions['base'].select({ msg, master })
-    }
-
-    async messageHandler(msg) {
-        console.log(msg);
-        try {
-
-            let master = this.isExists(msg.from.id)
-
-
-            if (master) {
-                master.chat_id = msg.chat.id;
-                let actionKey = Object.keys(this.actions).find(key => {
-                    return key === master.action
-                })
-
-                let action = this.actions[actionKey]
-
-
-
-                if (action) {
-                    action.resolve({ master, msg })
-                } else if (master.is_registered) {
-
-
-                    this.showBaseActions({ master, msg })
-                } else {
-                    this.actions['sign_up'].select({ master })
-                }
-            } else {
-                this.newUserHandler({ telegram_id: msg.from.id, username: msg.from.username, chat_id: msg.chat.id })
-            }
-        }
-        catch (error) {
-            console.log(error);
-        }
-    }
-
-    async newUserHandler({ telegram_id, chat_id, username }) {
-        const master = this.createMaster({ telegram_id, chat_id, username })
-        this.actions['sign_up'].select({ master })
-    }
-
-    createMaster({ telegram_id, chat_id, username }) {
-        const master = new Master({ telegram_id, chat_id, username })
-        return master
-    }
-
-    getMaster({ id, telegram_id }) {
-
-        let master = id ? db.getMaster({ id }) : telegram_id ? db.getMaster({ telegram_id }) : false
-        if (master) {
-            return new Master({ ...master })
-        } else {
-            return false
-        }
-    }
-
-    createCallback(callback = '', props = {}) {
-
-        const id = uid()
-        const data = {
-            id,
-            callback,
-            props
-        }
-
-        db.addCallback(data)
-
-
-        return data
-    }
-
-    isExists(telegram_id) {
-        let master = db.getMaster({ telegram_id })
-        if (master) {
-            return new Master({ ...master })
-        } else {
-            return false
-
-        }
-    }
-
-    async sendMessage(chat_id, text) {
-
-        let keyboard = {
-            reply_markup: {
-                remove_keyboard: true,
-                selective: false
-            },
-        };
-
-        await this.bot.sendMessage(chat_id, text,
-            keyboard)
-    }
-
-    async waiting(chat_id, text) {
-        const msgWait = await this.bot.sendMessage(chat_id, `Ожидайте ответа...`);
-        return async () => {
-            await this.bot.deleteMessage(msgWait.chat.id, msgWait.message_id);
-        }
-
-    }
-
-    getOrder({ id }) {
-        let order = db.getOrder({ id })
-        if (order) {
-            return new Order(order)
-        } else {
-            return false
-        }
-
-    }
-
-    getOrders({ executorId, transport_categories } = {}) {
-        let orders = db.getOrders({ executorId, transport_categories }).map(o => new Order(o))
-
-        return orders
-
-    }
-
-    checkCoord(coord) {
-        if (!Array.isArray(coord) || !Number.isFinite(coord[0]) || !Number.isFinite(coord[0]) || !coord[0] || !coord[1]) {
-            return false
-        }
-        else {
-            return true
-        }
-
-
-    }
-
 
 
 }
